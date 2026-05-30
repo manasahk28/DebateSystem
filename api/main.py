@@ -231,14 +231,15 @@ async def start_debate(body: StartDebateRequest):
                 print(f"CSV export failed (non-critical): {csv_err}")
 
             # ── 6. Send done event ────────────────────────────────────────
-            yield f"data: {json.dumps({
+            done_payload = {
                 'type': 'done',
                 'debate_id': debate_id,
                 'winner': winner,
                 'disqualified': disqualified,
                 'total_rounds': result.get('round_number', 1),
                 'total_messages': len(messages),
-            })}\n\n"
+            }
+            yield f"data: {json.dumps(done_payload)}\n\n"
 
             # ── 7. Signal completion (helps frontend stop loading spinners) ──
             yield f"data: {json.dumps({'type': 'complete'})}\n\n"
