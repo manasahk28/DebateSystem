@@ -22,7 +22,68 @@ class GenerateTopicNode(BaseComponent):
 
         debate_topic = state.get("debate_topic", "").strip()
         if not debate_topic:
-            debate_topic = self.execute_chain({}).strip()
+            raw_topic = self.execute_chain({})
+            
+            import re
+            
+            # 1. First attempt: If the model wraps the actual topic in quotes inside conversational text, extract it.
+            # We look for a double or single quoted block that is at least 5 characters long.
+            # For single quotes, we ensure it's not just an apostrophe in a word (like "here's") by matching boundary characters.
+            quote_match = re.search(r'"([^"]{5,})"', raw_topic)
+            if not quote_match:
+                quote_match = re.search(r"(?:\s|^|\:)\'([^\']{5,})\'(?:\s|$|\.|\,)", raw_topic)
+            
+            if quote_match:
+                debate_topic = quote_match.group(1).strip()
+            else:
+                # 2. Second attempt: Check each line of the raw response to find the first line
+                # that is not just a conversational intro.
+                lines = [l.strip() for l in raw_topic.split("\n") if l.strip()]
+                
+                conversational_prefixes = [
+                    "sure!", "here's a debate topic:", "here is a debate topic:", 
+                    "here's a topic:", "here is a topic:", "topic:", "debate topic:",
+                    "the debate topic is:", "sure, here is a debate topic:", "sure,"
+                ]
+                
+                selected_line = ""
+                for line in lines:
+                    cleaned_line = line.strip()
+                    lowered = cleaned_line.lower()
+                    
+                    # Iteratively strip conversational prefixes from the start of the line
+                    changed = True
+                    while changed:
+                        changed = False
+                        for prefix in conversational_prefixes:
+                            if lowered.startswith(prefix):
+                                cleaned_line = cleaned_line[len(prefix):].strip()
+                                lowered = cleaned_line.lower()
+                                changed = True
+                    
+                    # Strip quotes and conversational artifacts
+                    cleaned_line = cleaned_line.replace('"', '').replace("Sure!", "").strip()
+                    
+                    # If this line is not just a short conversational intro/outro and has meaningful length, select it
+                    if cleaned_line and len(cleaned_line) > 3:
+                        selected_line = cleaned_line
+                        break
+                
+                if selected_line:
+                    debate_topic = selected_line
+                elif lines:
+                    # Fallback to the first line, as suggested by the user
+                    debate_topic = lines[0]
+                else:
+                    debate_topic = raw_topic
+            
+            # 3. Final cleanups (as requested by user: strip quotes, remove Sure! prefix/remnants)
+            debate_topic = (
+                debate_topic
+                .replace('"', '')
+                .replace("Sure!", "")
+                .strip()
+            )
 
         # Store the topic and assign stances in the DebateState
         positions = {

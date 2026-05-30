@@ -1,0 +1,13 @@
+id,debate_id,topic,round,speaker,stage,argument,fact_check,timestamp
+399,66c83bfc-5eb5-430e-8985-0f5f1fe821eb,AI in healthcare,1,topic_generator,topic,AI in healthcare,1,2026-05-30T17:51:11.737991
+400,66c83bfc-5eb5-430e-8985-0f5f1fe821eb,AI in healthcare,1,pro,opening,Pro statement on AI.,1,2026-05-30T17:51:11.747023
+401,66c83bfc-5eb5-430e-8985-0f5f1fe821eb,AI in healthcare,1,fact_checker,opening,Fact check passed: Valid study reference.,1,2026-05-30T17:51:11.761832
+402,66c83bfc-5eb5-430e-8985-0f5f1fe821eb,AI in healthcare,1,con,rebuttal,Con statement on AI.,1,2026-05-30T17:51:11.775334
+403,66c83bfc-5eb5-430e-8985-0f5f1fe821eb,AI in healthcare,1,fact_checker,rebuttal,Fact check passed: Valid study reference.,1,2026-05-30T17:51:11.790761
+404,66c83bfc-5eb5-430e-8985-0f5f1fe821eb,AI in healthcare,2,pro,counter,Pro statement on AI.,1,2026-05-30T17:51:11.804341
+405,66c83bfc-5eb5-430e-8985-0f5f1fe821eb,AI in healthcare,2,fact_checker,counter,Fact check passed: Valid study reference.,1,2026-05-30T17:51:11.822729
+406,66c83bfc-5eb5-430e-8985-0f5f1fe821eb,AI in healthcare,2,con,final_argument,Con statement on AI.,1,2026-05-30T17:51:11.837079
+407,66c83bfc-5eb5-430e-8985-0f5f1fe821eb,AI in healthcare,2,fact_checker,final_argument,Fact check passed: Valid study reference.,1,2026-05-30T17:51:11.851435
+408,66c83bfc-5eb5-430e-8985-0f5f1fe821eb,AI in healthcare,3,judge,verdict,"WINNER: PRO
+
+REASON: PRO constructed better arguments.",1,2026-05-30T17:51:11.862664

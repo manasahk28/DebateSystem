@@ -164,6 +164,11 @@ class BaseComponent:
                 else:
                     result = self.chain.invoke(inputs)
 
+                if not result:
+                    raise ValueError("LLM returned empty response")
+                if hasattr(result, "content") and not result.content:
+                    raise ValueError("LLM returned empty response")
+
                 if self.output_model is not None and not isinstance(result, self.output_model):
                     parser = PydanticOutputParser(pydantic_object=self.output_model)
                     text_to_parse = getattr(result, "text", str(result))

@@ -25,6 +25,10 @@ export default function TranscriptPage({ debateId, onBack, theme }) {
     </div>
   );
 
+  const sortedMessages = [...(data?.messages || [])].sort(
+    (a, b) => (a.turn_number || 0) - (b.turn_number || 0)
+  );
+
   return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "32px 24px" }}>
       <style>{`
@@ -70,8 +74,8 @@ export default function TranscriptPage({ debateId, onBack, theme }) {
 
       {/* Full turn-by-turn replay */}
       <div style={{ borderTop: "0.5px solid var(--color-border-tertiary)" }}>
-        {data.messages.map((msg, i) => (
-          <TurnCard key={i} msg={msg} index={i} isNew={false} />
+        {sortedMessages.map((msg, i) => (
+          <TurnCard key={`${msg?.speaker || "unknown"}-${msg?.turn_number || i}`} msg={msg} index={i} isNew={false} />
         ))}
       </div>
     </div>

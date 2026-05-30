@@ -17,8 +17,8 @@ class DebateVerdict(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    winner: Literal["pro", "con"] = Field(
-        description="Indicates the winner of the debate. Must be 'pro' or 'con'."
+    winner: Literal["pro", "con", "draw"] = Field(
+        description="Indicates the winner of the debate. Must be 'pro', 'con', or 'draw'."
     )
     justification: str = Field(
         description="A concise explanation of why this speaker won. Focus on rhetorical quality, not correctness of stance."
@@ -42,10 +42,17 @@ class JudgeNode(BaseComponent):
         messages = state.get("messages", [])
         debate_history = get_debate_history(messages)
 
-        result = self.execute_chain({
-            "debate_topic": debate_topic,
-            "debate_history": debate_history
-        })
+        try:
+            result = self.execute_chain({
+                "debate_topic": debate_topic,
+                "debate_history": debate_history
+            })
+        except Exception as e:
+            self.logger.error(f"Judge parsing failed: {e}. Defaulting to Draw.")
+            result = DebateVerdict(
+                winner="draw",
+                justification="Judge parsing failed due to malformed LLM output. Rhetorical skill evaluated as a draw."
+            )
 
         verdict_message = {
             "speaker": SPEAKER_JUDGE,

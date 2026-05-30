@@ -102,18 +102,37 @@ export default function App() {
             />
 
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-              <button
-                onClick={toggleDark}
+              <div
+              onClick={() => setDark(!dark)}
+              style={{
+                width: "46px",
+                height: "26px",
+                background: dark ? "#6d28d9" : "#c4b5fd",
+                borderRadius: "13px",
+                position: "relative",
+                cursor: "pointer",
+                transition: "background 0.3s",
+              }}
+            >
+              {/* Sun Icon */}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color: theme.muted, position: "absolute", left: "4px", top: "4px" }}><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8"/></svg>
+              {/* Toggle Circle */}
+              <div
                 style={{
-                  padding: "10px 14px", fontSize: 13, borderRadius: 10,
-                  border: `1px solid ${theme.btnBorder}`,
-                  background: theme.btnBg,
-                  color: theme.btnText,
-                  cursor: "pointer",
+                  position: "absolute",
+                  top: "3px",
+                  left: dark ? "23px" : "3px",
+                  width: "20px",
+                  height: "20px",
+                  background: "#fff",
+                  borderRadius: "50%",
+                  transition: "left 0.3s",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
                 }}
-              >
-                {dark ? "Light mode" : "Dark mode"}
-              </button>
+              />
+              {/* Moon Icon */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: theme.muted, position: "absolute", right: "4px", top: "4px" }}><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
             </div>
           </div>
 

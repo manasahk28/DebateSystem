@@ -20,7 +20,7 @@ class DebateState(TypedDict):
     debate_id: str
     debate_topic: str
     positions: Dict[str, str]
-    messages: Annotated[List[DebateMessage], operator.add]
+    messages: List[DebateMessage]
     opening_statement_pro_agent: str
     stage: str  # "opening", "rebuttal", "counter", "final_argument"
     speaker: str  # "pro" or "con"
@@ -29,3 +29,4 @@ class DebateState(TypedDict):
     times_pro_fact_checked: int # The number of times the pro agent has been fact-checked. If it reaches 3, the pro agent is disqualified.
     times_con_fact_checked: int # The number of times the con agent has been fact-checked. If it reaches 3, the con agent is disqualified.
     disqualified: str | None # The name of the disqualified speaker, if any.
+    retry_count: int # The number of consecutive failed fact checks on the current turn.

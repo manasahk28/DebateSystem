@@ -13,6 +13,7 @@ export default function HomePage({ onStart, theme }) {
   const [topic, setTopic]     = useState("");
   const [hoveredSugg, setHoveredSugg] = useState(null);
   const [btnHovered, setBtnHovered]   = useState(false);
+  const [submitting, setSubmitting]   = useState(false);
 
   const canStart = topic.trim().length > 0;
 
@@ -140,8 +141,14 @@ export default function HomePage({ onStart, theme }) {
 
           {/* ── Start button ── */}
           <button
-            onClick={() => canStart && onStart && onStart(topic.trim())}
-            disabled={!canStart}
+            onClick={() => {
+              if (!topic.trim()) return;
+              if (canStart && onStart && !submitting) {
+                setSubmitting(true);
+                onStart(topic.trim());
+              }
+            }}
+            disabled={!canStart || submitting}
             onMouseEnter={() => setBtnHovered(true)}
             onMouseLeave={() => setBtnHovered(false)}
             style={{
@@ -149,16 +156,16 @@ export default function HomePage({ onStart, theme }) {
               padding:      "14px",
               fontSize:     "15px",
               fontWeight:   "600",
-              background:   canStart
+              background:   canStart && !submitting
                               ? (btnHovered ? theme.btnHover : theme.btnBg)
                               : theme.btnDisBg,
-              color:        canStart ? "#fff" : theme.btnDisText,
+              color:        canStart && !submitting ? "#fff" : theme.btnDisText,
               border:       "none",
               borderRadius: "12px",
-              cursor:       canStart ? "pointer" : "default",
+              cursor:       canStart && !submitting ? "pointer" : "default",
               transition:   "background 0.2s, transform 0.15s",
-              transform:    canStart && btnHovered ? "translateY(-1px)" : "translateY(0)",
-              boxShadow:    canStart
+              transform:    canStart && !submitting && btnHovered ? "translateY(-1px)" : "translateY(0)",
+              boxShadow:    canStart && !submitting
                               ? (theme.dark
                                   ? "0 0 24px rgba(124,92,191,0.4)"
                                   : "0 4px 16px rgba(124,92,191,0.3)")
@@ -166,7 +173,7 @@ export default function HomePage({ onStart, theme }) {
               letterSpacing: "0.01em",
             }}
           >
-            Start debate →
+            {submitting ? "Starting..." : "Start debate →"}
           </button>
         </div>
       </div>

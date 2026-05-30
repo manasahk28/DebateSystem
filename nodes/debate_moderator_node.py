@@ -12,10 +12,22 @@ class DebateModeratorNode:
         stage = state["stage"]
         speaker = state["speaker"]
 
-        # Safety guard: ensure speaker is a valid value before routing
+        # Safety guards: ensure speaker and stage are valid before routing
         if speaker not in [SPEAKER_PRO, SPEAKER_CON]:
             raise ValueError(
-                f"Invalid speaker: {state.get('speaker')}"
+                f"Invalid speaker: {speaker}"
+            )
+
+        valid_stages = [
+            "opening",
+            "rebuttal",
+            "counter",
+            "final_argument"
+        ]
+
+        if stage not in valid_stages:
+            raise ValueError(
+                f"Invalid stage: {stage}"
             )
 
         if stage == STAGE_OPENING and speaker == SPEAKER_PRO:

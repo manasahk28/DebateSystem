@@ -1,0 +1,15 @@
+id,debate_id,topic,round,speaker,stage,argument,fact_check,timestamp
+409,867eec10-2c79-4005-ae86-30eed8713e22,AI in healthcare,1,topic_generator,topic,AI in healthcare,1,2026-05-30T17:51:32.063407
+410,867eec10-2c79-4005-ae86-30eed8713e22,AI in healthcare,1,pro,opening,Pro statement containing claims.,0,2026-05-30T17:51:32.076803
+411,867eec10-2c79-4005-ae86-30eed8713e22,AI in healthcare,1,fact_checker,opening,Fact check failed: Factual error.,0,2026-05-30T17:51:32.095388
+412,867eec10-2c79-4005-ae86-30eed8713e22,AI in healthcare,1,pro,opening,Pro statement containing claims.,1,2026-05-30T17:51:32.110412
+413,867eec10-2c79-4005-ae86-30eed8713e22,AI in healthcare,1,fact_checker,opening,Fact check passed: Corrected and valid.,1,2026-05-30T17:51:32.129392
+414,867eec10-2c79-4005-ae86-30eed8713e22,AI in healthcare,1,con,rebuttal,Con statement.,1,2026-05-30T17:51:32.150259
+415,867eec10-2c79-4005-ae86-30eed8713e22,AI in healthcare,1,fact_checker,rebuttal,Fact check passed: Valid.,1,2026-05-30T17:51:32.177840
+416,867eec10-2c79-4005-ae86-30eed8713e22,AI in healthcare,2,pro,counter,Pro statement containing claims.,1,2026-05-30T17:51:32.200116
+417,867eec10-2c79-4005-ae86-30eed8713e22,AI in healthcare,2,fact_checker,counter,Fact check passed: Valid.,1,2026-05-30T17:51:32.221545
+418,867eec10-2c79-4005-ae86-30eed8713e22,AI in healthcare,2,con,final_argument,Con statement.,1,2026-05-30T17:51:32.236455
+419,867eec10-2c79-4005-ae86-30eed8713e22,AI in healthcare,2,fact_checker,final_argument,Fact check passed: Valid.,1,2026-05-30T17:51:32.252343
+420,867eec10-2c79-4005-ae86-30eed8713e22,AI in healthcare,3,judge,verdict,"WINNER: CON
+
+REASON: CON was more persuasive.",1,2026-05-30T17:51:32.268625

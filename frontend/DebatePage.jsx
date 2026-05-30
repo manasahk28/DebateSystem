@@ -23,14 +23,122 @@ function StatCard({ label, value, theme }) {
 }
 
 // ── turn card ──────────────────────────────────────────────────────────────────
+// ── turn card ──────────────────────────────────────────────────────────────────
 function TurnCard({ msg, index, isNew, theme }) {
+  if (!msg) return null;
+
+  const speaker = msg.speaker || "pro";
+  const stage = msg.stage || "opening";
+  const content = msg.content || "";
+
+  if (speaker === "judge" || (speaker === "moderator" && stage === "verdict")) {
+    let winner = "DRAW";
+    let reason = content;
+    let title = "JUDICIAL VERDICT";
+    let disqualified = null;
+    let isDisqualified = false;
+
+    if (speaker === "judge") {
+      const winnerMatch = content.match(/WINNER:\s*([A-Za-z]+)/i);
+      if (winnerMatch) winner = winnerMatch[1].trim().toUpperCase();
+      const reasonMatch = content.match(/REASON:\s*([\s\S]+)/i);
+      if (reasonMatch) reason = reasonMatch[1].trim();
+    } else {
+      title = "MODERATOR DECISION";
+      isDisqualified = true;
+      const winnerMatch = content.match(/WINNER:\s*([A-Za-z]+)/i);
+      if (winnerMatch) winner = winnerMatch[1].trim().toUpperCase();
+      const disMatch = content.match(/DISQUALIFIED:\s*([A-Za-z]+)/i);
+      if (disMatch) disqualified = disMatch[1].trim().toUpperCase();
+      
+      reason = "Debate ended early due to excessive factual inaccuracies. Too many failed fact checks resulted in automated disqualification.";
+      const reasonMatch = content.match(/exceeded fact check limit/i);
+      if (reasonMatch) {
+        reason = content;
+      }
+    }
+
+    const winnerColor = winner === "PRO" ? theme.proText : winner === "CON" ? theme.conText : theme.accent;
+    const bannerBg = winner === "PRO" ? theme.proBg : winner === "CON" ? theme.conBg : theme.factBg;
+    const borderCol = winner === "PRO" ? theme.proBorder : winner === "CON" ? theme.conBorder : theme.factBorder;
+
+    return (
+      <div style={{
+        padding: "24px 28px",
+        borderBottom: `1px solid ${theme.border}`,
+        background: `linear-gradient(135deg, ${theme.judgeBg} 0%, rgba(251,191,36,0.02) 100%)`,
+        borderLeft: `5px solid ${theme.judgeBorder}`,
+        animation: isNew ? "fadeSlide 0.5s cubic-bezier(0.16, 1, 0.3, 1)" : "none",
+        transition: "all 0.35s",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <span style={{
+            fontSize: 9, fontWeight: 800, letterSpacing: "0.12em",
+            padding: "4px 10px", borderRadius: 6,
+            background: theme.judgeBorder, color: theme.judgeText,
+            border: `1px solid ${theme.judgeBorder}`,
+            fontFamily: "monospace",
+          }}>
+            {title}
+          </span>
+          {msg.round != null && (
+            <span style={{ fontSize: 11, color: theme.muted, fontWeight: 500 }}>Concluded in Round {msg.round}</span>
+          )}
+        </div>
+        
+        <div style={{
+          display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 20,
+          background: bannerBg, padding: "16px 20px", borderRadius: "12px",
+          border: `1.5px solid ${borderCol}`,
+        }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: theme.muted, marginBottom: 4 }}>
+              Decision Result
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: winnerColor, display: "flex", alignItems: "center", gap: 8 }}>
+              <span>🏆</span> {winner} WINS
+            </div>
+          </div>
+          {isDisqualified && disqualified && (
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: theme.danger, marginBottom: 4 }}>
+                Infraction Details
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: theme.danger }}>
+                ⚠️ {disqualified} Disqualified
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: theme.muted, marginBottom: 6 }}>
+            Judicial Rationale & Analysis
+          </div>
+          <div style={{
+            fontSize: 14, lineHeight: 1.75, color: theme.text,
+            background: theme.rowBg, padding: "14px 18px", borderRadius: "10px",
+            border: `1px solid ${theme.border}`,
+            whiteSpace: "pre-wrap",
+            boxShadow: "inset 0 1px 3px rgba(0,0,0,0.02)",
+          }}>
+            {reason}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const speakerStyles = {
-    pro:        { bg: theme.proBg,    border: theme.proBorder,    text: theme.proText,   label: "PRO" },
-    con:        { bg: theme.conBg,    border: theme.conBorder,    text: theme.conText,   label: "CON" },
-    fact_check: { bg: theme.factBg,   border: theme.factBorder,   text: theme.factText,  label: "FACT CHECK" },
-    judge:      { bg: theme.judgeBg,  border: theme.judgeBorder,  text: theme.judgeText, label: "JUDGE" },
+    pro:          { bg: theme.proBg,    border: theme.proBorder,    text: theme.proText,   label: "PRO" },
+    con:          { bg: theme.conBg,    border: theme.conBorder,    text: theme.conText,   label: "CON" },
+    fact_check:   { bg: theme.factBg,   border: theme.factBorder,   text: theme.factText,  label: "FACT CHECK" },
+    fact_checker: { bg: theme.factBg,   border: theme.factBorder,   text: theme.factText,  label: "FACT CHECK" },
+    judge:        { bg: theme.judgeBg,  border: theme.judgeBorder,  text: theme.judgeText, label: "JUDGE" },
+    moderator:    { bg: theme.factBg,   border: theme.factBorder,   text: theme.factText,  label: "MODERATOR" },
+    default:      { bg: theme.rowBg,    border: theme.border,       text: theme.text,      label: "DEBATE" },
   };
-  const s = speakerStyles[msg.speaker] || speakerStyles.fact_check;
+  const s = speakerStyles[speaker] || speakerStyles.default;
 
   return (
     <div style={{
@@ -57,7 +165,7 @@ function TurnCard({ msg, index, isNew, theme }) {
         fontSize: 14, lineHeight: 1.7, color: theme.text,
         whiteSpace: "pre-wrap",
       }}>
-        {msg.content}
+        {content}
       </div>
     </div>
   );
@@ -112,13 +220,17 @@ export default function DebatePage({ topic, onDone, onBack, theme }) {
 
   // ── SSE stream ──
   useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
     let aborted = false;
+
     async function startStream() {
       try {
         const res = await fetch(`${API}/debate/start`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ topic }),
+          signal,
         });
         if (!res.ok) { setStatus("error"); return; }
 
@@ -129,7 +241,7 @@ export default function DebatePage({ topic, onDone, onBack, theme }) {
 
         while (true) {
           const { value, done } = await reader.read();
-          if (done || aborted) break;
+          if (done || aborted || signal.aborted) break;
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
           buffer = lines.pop();
@@ -140,7 +252,7 @@ export default function DebatePage({ topic, onDone, onBack, theme }) {
             if (!raw) continue;
             try {
               const evt = JSON.parse(raw);
-              if (aborted) break;
+              if (aborted || signal.aborted) break;
               if (evt.type === "started") {
                 setDebateId(evt.debate_id);
               } else if (evt.type === "turn") {
@@ -156,25 +268,32 @@ export default function DebatePage({ topic, onDone, onBack, theme }) {
                 setWinner(evt.winner);
                 setDisqualified(evt.disqualified);
                 setStats({ rounds: evt.total_rounds, total: evt.total_messages });
-                setStatus("done");
                 onDone && onDone(evt);
               } else if (evt.type === "complete") {
                 // Backend signals stream completion; ensure UI stops loading spinners
-                setStatus(prev => prev === "running" ? "done" : prev);
+                setStatus("done");
+                aborted = true;
+                break;
               } else if (evt.type === "error") {
                 setStatus("error");
               }
             } catch (e) { console.warn("SSE parse error:", e); }
           }
         }
-        if (!aborted) setStatus(prev => prev === "running" ? "done" : prev);
-      }catch (e) {
+        if (!aborted && !signal.aborted) setStatus("done");
+      } catch (e) {
+        if (e.name === "AbortError") {
+          return; // Fetch aborted cleanly, ignore
+        }
         console.error("Stream error details:", e.message, e.name, e.stack);
-        if (!aborted) setStatus("error");
+        if (!aborted && !signal.aborted) setStatus("error");
       }
     }
     startStream();
-    return () => { aborted = true; };
+    return () => {
+      aborted = true;
+      controller.abort();
+    };
   }, [topic]);
 
   // ── auto-scroll ──
@@ -182,8 +301,8 @@ export default function DebatePage({ topic, onDone, onBack, theme }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const proMsgs = messages.filter(m => m.speaker === "pro").length;
-  const conMsgs = messages.filter(m => m.speaker === "con").length;
+  const proMsgs = messages.filter(m => m?.speaker === "pro").length;
+  const conMsgs = messages.filter(m => m?.speaker === "con").length;
 
   const linkStyle = (hovered) => ({
     fontSize: 13, fontWeight: 600,
@@ -196,6 +315,10 @@ export default function DebatePage({ topic, onDone, onBack, theme }) {
     transition: "all 0.18s",
     display: "inline-block",
   });
+
+  const sortedMessages = [...messages].sort(
+    (a, b) => (a.turn_number || 0) - (b.turn_number || 0)
+  );
 
   return (
     <div style={{
@@ -316,8 +439,8 @@ export default function DebatePage({ topic, onDone, onBack, theme }) {
               Agents are preparing their positions…
             </div>
           )}
-          {messages.map((msg, i) => (
-            <TurnCard key={i} msg={msg} index={i} isNew={newIndices.has(i)} theme={theme} />
+          {sortedMessages.map((msg, i) => (
+            <TurnCard key={`${msg?.speaker || "unknown"}-${msg?.turn_number || i}`} msg={msg} index={i} isNew={newIndices.has(i)} theme={theme} />
           ))}
           <div ref={bottomRef} />
         </div>

@@ -1,6 +1,7 @@
 from nodes.base_component import BaseComponent
 from debate_state import DebateState
 from typing import Dict, Any
+from langgraph.types import Command
 from configurations.debate_constants import (
     STAGE_REBUTTAL, STAGE_FINAL_ARGUMENT,
     SPEAKER_CON, SPEAKER_PRO
@@ -36,11 +37,14 @@ Your previous arguments across rounds:
 Build on or refine your position. Don't repeat yourself.
 """
 
-    def _append_memory(self, role: str, state: DebateState, new_argument: str) -> None:
-        memory = state.setdefault("memory", {"PRO": [], "CON": []})
-        memory.setdefault(role, []).append(new_argument)
-        # Round/turn counting is managed by the DebateModeratorNode to ensure
-        # increments only occur after both speakers have completed a pair.
+    def _get_updated_memory(self, role: str, state: DebateState, new_argument: str) -> dict:
+        old_memory = state.get("memory") or {"PRO": [], "CON": []}
+        new_memory = {
+            "PRO": list(old_memory.get("PRO", [])),
+            "CON": list(old_memory.get("CON", []))
+        }
+        new_memory.setdefault(role, []).append(new_argument)
+        return new_memory
 
     def __call__(self, state: DebateState) -> Dict[str, Any]:
         super().__call__(state)
@@ -50,16 +54,36 @@ Build on or refine your position. Don't repeat yourself.
         speaker = state["speaker"]
 
         # Determine if the CON agent is retrying due to a failed fact check
-        last_msg = messages[-1] if messages else None
-        retrying = last_msg and last_msg["speaker"] == SPEAKER_CON and not last_msg["validated"]
+        retrying = False
+        if len(messages) >= 2:
+            previous_msg = messages[-2]
+            latest_msg = messages[-1]
+
+            retrying = (
+                latest_msg["speaker"] == "fact_checker"
+                and previous_msg["speaker"] == SPEAKER_CON
+                and not previous_msg.get("validated", False)
+            )
+
+        retry_count = state.get("retry_count", 0)
+        if retrying:
+            retry_count += 1
+            if retry_count >= 3:
+                # Bypass to debate_moderator_node to prevent infinite retry loop
+                return Command(
+                    update={"retry_count": 0},
+                    goto="debate_moderator_node"
+                )
+        else:
+            retry_count = 0
 
         system_prompt = self._build_system_prompt(SPEAKER_CON.upper(), state)
 
         if stage == STAGE_REBUTTAL and speaker == SPEAKER_CON:
             opponent_msg = self._get_last_message_by(SPEAKER_PRO, messages)
             human_template = self.rebuttal_retry_human_prompt if retrying else self.rebuttal_human_prompt
-            chain = self.create_chain(system_prompt, human_template)
-            result = chain.invoke({
+            self.create_chain(system_prompt, human_template)
+            result = self.execute_chain({
                 "debate_topic": debate_topic,
                 "opponent_statement": opponent_msg,
             })
@@ -67,8 +91,8 @@ Build on or refine your position. Don't repeat yourself.
         elif stage == STAGE_FINAL_ARGUMENT and speaker == SPEAKER_CON:
             debate_history = get_debate_history(messages)
             human_template = self.final_argument_retry_human_prompt if retrying else self.final_argument_human_prompt
-            chain = self.create_chain(system_prompt, human_template)
-            result = chain.invoke({
+            self.create_chain(system_prompt, human_template)
+            result = self.execute_chain({
                 "debate_topic": debate_topic,
                 "debate_history": debate_history,
             })
@@ -77,7 +101,7 @@ Build on or refine your position. Don't repeat yourself.
             raise ValueError(f"Unknown turn for ConDebater: stage={stage}, speaker={speaker}")
 
         new_message = create_debate_message(speaker=SPEAKER_CON, content=result, stage=stage)
-        self._append_memory(SPEAKER_CON.upper(), state, result)
+        new_memory = self._get_updated_memory(SPEAKER_CON.upper(), state, result)
 
         self.log_debate_event(
             f"[bold]{stage.upper()}[/] {'🔁 (Retry)' if retrying else ''}\n"
@@ -96,9 +120,10 @@ Build on or refine your position. Don't repeat yourself.
                 None,
             )
         return {
-            "messages": [new_message],
-            "memory": state["memory"],
+            "messages": messages + [new_message],
+            "memory": new_memory,
             "round_number": state["round_number"],
+            "retry_count": retry_count,
         }
 
     def _get_last_message_by(self, speaker: str, messages: list) -> str:

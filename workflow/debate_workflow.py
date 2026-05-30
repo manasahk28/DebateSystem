@@ -58,6 +58,7 @@ class DebateWorkflow:
             "round_number": 1,
             "times_pro_fact_checked": 0,
             "times_con_fact_checked": 0,
+            "retry_count": 0,
         }
         final_state = await graph.ainvoke(initial_state, config={"recursion_limit": 50})
         return final_state

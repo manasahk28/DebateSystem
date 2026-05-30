@@ -179,7 +179,7 @@ async def start_debate(body: StartDebateRequest):
                             "content": event_payload.get("argument"),
                             "round_number": event_payload.get("round"),
                             "round": event_payload.get("round"),
-                            "turn_number": event_payload.get("round"),
+                            "turn_number": event_payload.get("id"),
                             "validated": event_payload.get("fact_check_passed"),
                             "timestamp": event_payload.get("timestamp"),
                         }
@@ -288,7 +288,7 @@ async def get_transcript(debate_id: str):
             "topic": row["topic"],
             "round_number": row["round"],
             "round": row["round"],
-            "turn_number": row["round"],
+            "turn_number": row["id"],
             "speaker": row["speaker"],
             "stage": row["stage"],
             "content": row["argument"],

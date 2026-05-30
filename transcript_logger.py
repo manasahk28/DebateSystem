@@ -36,10 +36,12 @@ class TranscriptLogger:
     def log_turn(self, debate_id, topic, round_num, speaker, stage, argument, fact_check_passed):
         conn = sqlite3.connect(self.db_path)
         try:
-            conn.execute("INSERT INTO debates VALUES (NULL,?,?,?,?,?,?,?,?)",
+            cur = conn.cursor()
+            cur.execute("INSERT INTO debates VALUES (NULL,?,?,?,?,?,?,?,?)",
                 (debate_id, topic, round_num, speaker, stage, argument,
                  fact_check_passed, datetime.now().isoformat()))
             conn.commit()
+            last_id = cur.lastrowid
         except Exception:
             conn.rollback()
             raise
@@ -49,6 +51,7 @@ class TranscriptLogger:
         if self.event_queue is not None:
             payload = {
                 "event": "turn",
+                "id": last_id,
                 "debate_id": debate_id,
                 "topic": topic,
                 "round": round_num,
