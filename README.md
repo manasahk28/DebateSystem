@@ -30,6 +30,20 @@ graph TD
 * **`DebateModeratorNode`**: Manages structural limits, rounds of debate, and automatically handles disqualification if an agent triggers excessive fact-check failures.
 * **`JudgeNode`**: Impartially parses the debate, determining the winner and delivering a conversational, human-friendly summary verdict.
 
+## ✦ AI Models & Orchestration Algorithms
+
+### 🤖 LLM Deployment & Configuration
+To maximize speed, accuracy, and rhetorical depth, Debate2.0 distributes orchestration tasks among distinct state-of-the-art LLMs via the **Groq Cloud API**:
+* **Debater Agents (PRO and CON)**: Powered by `meta-llama/llama-4-scout-17b-16e-instruct` (a highly responsive model with complex contextual comprehension) to construct logical, structured, and rhetorically rich arguments.
+* **Fact Checker Node**: Powered by `llama-3.1-8b-instant` (an extremely fast, low-latency model) to execute rapid, real-time assertions and claim cross-references.
+* **Judge Node**: Powered by `meta-llama/llama-4-scout-17b-16e-instruct` to execute advanced logical reasoning and synthesize a neutral verdict.
+
+### 🧠 Orchestration Algorithms
+* **LangGraph Compiled State Machines:** Leverages compiled cyclic graphs (`StateGraph`) that maintain a persistent memory dictionary (`memory: {"PRO": [], "CON": []}`) containing historical contexts of previous turns, preserving topic consistency across rounds.
+* **Dispute & Retry Routing Logic:** If a debater claim fails a fact-check, a conditional router redirects control flow back to the offending debater node, appending the fact-check feedback to the state and incrementing `retry_count` (bounded by a maximum `retry_limit` threshold) to force statement reconstruction.
+* **Moderated Disqualification Safeguards:** An automated moderation algorithm monitors accumulated fact-check infractions. If either speaker's infractions exceed safety limits, the moderator halts the execution loop and issues an early automated disqualification.
+* **Structured Output Validation:** Employs LangChain Structured Outputs bound to a strict Pydantic model (`DebateVerdict`) to validate LLM outputs, featuring exception-safe fallback handlers to prevent graph failure on unexpected JSON parsing issues.
+
 ---
 
 ## ✦ Premium Key Features
@@ -69,9 +83,16 @@ Open your terminal in the root workspace directory:
 # Install core dependencies
 pip install -r requirements.txt
 
-# Create your environmental configuration (.env)
-echo GROQ_API_KEY="your_groq_api_key_here" > .env
+# Create your local environmental configuration (.env) from the template
+cp .env.example .env
+```
 
+Configure the following keys in your newly created root `.env` file:
+* **`GROQ_API_KEY`** (Required): Your Groq Cloud API Key to power the debaters and judge LLMs.
+* **`OLLAMA_BASE_URL`** (Optional): Local model runner endpoint (e.g., `http://localhost:11434`).
+* **`LANGCHAIN_API_KEY` / `LANGCHAIN_TRACING_V2` / `LANGCHAIN_PROJECT`** (Optional): Enable LangSmith tracing by providing your LangChain keys to debug the LangGraph workflows in real time.
+
+```bash
 # Run the FastAPI server
 uvicorn api.main:app --reload --port 8000
 ```
@@ -86,6 +107,14 @@ cd frontend
 # Install package dependencies
 npm install
 
+# Create your local frontend configuration (.env) from the template
+cp .env.example .env
+```
+
+Configure the following key inside `frontend/.env`:
+* **`VITE_API_URL`**: Set to the URL of the running API server (defaults to `http://localhost:8000`).
+
+```bash
 # Run the development server
 npm run dev
 ```
