@@ -41,7 +41,8 @@ Build on or refine your position. Don't repeat yourself.
     def _append_memory(self, role: str, state: DebateState, new_argument: str) -> None:
         memory = state.setdefault("memory", {"PRO": [], "CON": []})
         memory.setdefault(role, []).append(new_argument)
-        state["round_number"] = state.get("round_number", 0) + 1
+        # Round/turn counting is managed by the DebateModeratorNode to ensure
+        # increments only occur after both speakers have completed a pair.
 
     def __call__(self, state: DebateState) -> Dict[str, Any]:
         super().__call__(state)
@@ -51,9 +52,18 @@ Build on or refine your position. Don't repeat yourself.
         stage = state.get("stage")
         speaker = state.get("speaker")
 
-        # Check if retrying (last message was by pro and not validated)
-        last_msg = messages[-1] if messages else None
-        retrying = last_msg and last_msg["speaker"] == SPEAKER_PRO and not last_msg["validated"]
+        # Determine if this turn is a retry triggered by a failed fact-check.
+        retrying = False
+
+        if len(messages) >= 2:
+            previous_msg = messages[-2]
+            latest_msg = messages[-1]
+
+            retrying = (
+                latest_msg["speaker"] == "fact_checker"
+                and previous_msg["speaker"] == SPEAKER_PRO
+                and not previous_msg.get("validated", False)
+            )
 
         system_prompt = self._build_system_prompt(SPEAKER_PRO.upper(), state)
 
@@ -91,11 +101,11 @@ Build on or refine your position. Don't repeat yourself.
                 SPEAKER_PRO,
                 stage,
                 result,
-                True,
+                None,
             )
 
         return {
-            "messages": messages + [new_message],
+            "messages": [new_message],
             "memory": state["memory"],
             "round_number": state["round_number"],
         }

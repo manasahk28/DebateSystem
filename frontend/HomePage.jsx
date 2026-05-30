@@ -8,120 +8,8 @@ const SUGGESTIONS = [
   "Space exploration is worth the cost.",
 ];
 
-// ── shared theme tokens (mirrors Debate2.jsx exactly) ─────────────────────────
-function useTheme() {
-  const [dark, setDark] = useState(false);
-
-  const theme = {
-    dark,
-    bg:          dark ? "#0d0d1a"                          : "#ede8f5",
-    card:        dark ? "#13101f"                          : "#f5f2fc",
-    text:        dark ? "#e8e0f5"                          : "#1e1240",
-    subtext:     dark ? "#9987cc"                          : "#5b4a8a",
-    muted:       dark ? "#6b5fa0"                          : "#8b7cb5",
-    accent:      dark ? "#a78bfa"                          : "#7c5cbf",
-    border:      dark ? "#2a1f50"                          : "#d4c8ef",
-    inputBg:     dark ? "#0d0d1a"                          : "#ffffff",
-    inputBorder: dark ? "#2d2060"                          : "#c5b8e8",
-    suggBg:      dark ? "#1a1330"                          : "#eee9f9",
-    suggBorder:  dark ? "#2d2060"                          : "#d4c8ef",
-    suggHover:   dark ? "#221848"                          : "#e4ddf5",
-    btnBg:       dark ? "#7c5cbf"                          : "#9b7fd4",
-    btnHover:    dark ? "#9b72d8"                          : "#8a6fc0",
-    btnDisBg:    dark ? "#1e1535"                          : "#e4ddf5",
-    btnDisText:  dark ? "#6b5fa0"                          : "#a896cc",
-    cardShadow:  dark ? "0 8px 40px rgba(109,40,217,0.18)" : "0 8px 40px rgba(124,92,191,0.10)",
-  };
-
-  return { theme, toggleDark: () => setDark(d => !d) };
-}
-
-// ── navbar ─────────────────────────────────────────────────────────────────────
-function Navbar({ theme, toggleDark }) {
-  return (
-    <div
-      style={{
-        display:        "flex",
-        justifyContent: "space-between",
-        alignItems:     "center",
-        padding:        "18px 28px",
-        borderBottom:   `1px solid ${theme.border}`,
-        background:     theme.card,
-        transition:     "background 0.35s, border-color 0.35s",
-      }}
-    >
-      {/* Logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span
-          style={{
-            fontFamily:    "'Georgia', serif",
-            fontSize:      "22px",
-            fontWeight:    "700",
-            color:         theme.text,
-            letterSpacing: "-0.4px",
-          }}
-        >
-          Debate2.0
-        </span>
-        {theme.dark && (
-          <span style={{ color: "#a78bfa", fontSize: 12, marginTop: "-8px" }}>✦</span>
-        )}
-      </div>
-
-      {/* Theme toggle */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {/* Sun */}
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style={{ color: theme.muted }}>
-          <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
-          <path
-            d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
-          />
-        </svg>
-
-        {/* Toggle pill */}
-        <div
-          onClick={toggleDark}
-          style={{
-            width:      "46px",
-            height:     "26px",
-            background: theme.dark ? "#6d28d9" : "#c4b5fd",
-            borderRadius: "13px",
-            position:   "relative",
-            cursor:     "pointer",
-            transition: "background 0.3s",
-          }}
-        >
-          <div
-            style={{
-              position:     "absolute",
-              top:          "3px",
-              left:         theme.dark ? "23px" : "3px",
-              width:        "20px",
-              height:       "20px",
-              background:   "#fff",
-              borderRadius: "50%",
-              transition:   "left 0.3s",
-              boxShadow:    "0 1px 4px rgba(0,0,0,0.2)",
-            }}
-          />
-        </div>
-
-        {/* Moon */}
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ color: theme.muted }}>
-          <path
-            d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"
-            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-    </div>
-  );
-}
-
 // ── main page ──────────────────────────────────────────────────────────────────
-export default function HomePage({ onStart }) {
-  const { theme, toggleDark } = useTheme();
+export default function HomePage({ onStart, theme }) {
   const [topic, setTopic]     = useState("");
   const [hoveredSugg, setHoveredSugg] = useState(null);
   const [btnHovered, setBtnHovered]   = useState(false);
@@ -137,8 +25,6 @@ export default function HomePage({ onStart }) {
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
-      <Navbar theme={theme} toggleDark={toggleDark} />
-
       {/* Page body */}
       <div
         style={{

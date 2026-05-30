@@ -24,7 +24,7 @@ class DebateWorkflow:
         workflow.add_node("pro_debater_node", ProDebaterNode(debater_config, transcript_logger=self.transcript_logger))
         workflow.add_node("con_debater_node", ConDebaterNode(debater_config, transcript_logger=self.transcript_logger))
         workflow.add_node("fact_check_node", FactCheckNode(fast_config, transcript_logger=self.transcript_logger))
-        workflow.add_node("fact_check_router_node", FactCheckRouterNode())
+        workflow.add_node("fact_check_router_node", FactCheckRouterNode(transcript_logger=self.transcript_logger))
         workflow.add_node("debate_moderator_node", DebateModeratorNode())
         workflow.add_node("judge_node", JudgeNode(debater_config, transcript_logger=self.transcript_logger))
 
@@ -36,8 +36,6 @@ class DebateWorkflow:
         workflow.add_edge("pro_debater_node", "fact_check_node")
         workflow.add_edge("con_debater_node", "fact_check_node")
         workflow.add_edge("fact_check_node", "fact_check_router_node")
-        workflow.add_edge("fact_check_router_node", "debate_moderator_node")
-        workflow.add_edge("debate_moderator_node", "judge_node")
         workflow.add_edge("judge_node", END)
         return workflow
 
@@ -57,7 +55,7 @@ class DebateWorkflow:
             "stage": "opening",
             "speaker": "pro",
             "memory": {"PRO": [], "CON": []},
-            "round_number": 0,
+            "round_number": 1,
             "times_pro_fact_checked": 0,
             "times_con_fact_checked": 0,
         }

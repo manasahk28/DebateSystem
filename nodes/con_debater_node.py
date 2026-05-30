@@ -39,7 +39,8 @@ Build on or refine your position. Don't repeat yourself.
     def _append_memory(self, role: str, state: DebateState, new_argument: str) -> None:
         memory = state.setdefault("memory", {"PRO": [], "CON": []})
         memory.setdefault(role, []).append(new_argument)
-        state["round_number"] = state.get("round_number", 0) + 1
+        # Round/turn counting is managed by the DebateModeratorNode to ensure
+        # increments only occur after both speakers have completed a pair.
 
     def __call__(self, state: DebateState) -> Dict[str, Any]:
         super().__call__(state)
@@ -92,10 +93,10 @@ Build on or refine your position. Don't repeat yourself.
                 SPEAKER_CON,
                 stage,
                 result,
-                True,
+                None,
             )
         return {
-            "messages": messages + [new_message],
+            "messages": [new_message],
             "memory": state["memory"],
             "round_number": state["round_number"],
         }

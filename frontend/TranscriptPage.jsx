@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { API } from "./constants";
 import { TurnCard } from "./components";
 
-export default function TranscriptPage({ debateId, onBack }) {
+export default function TranscriptPage({ debateId, onBack, theme }) {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
 

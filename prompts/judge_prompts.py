@@ -21,5 +21,7 @@ Evaluate their rhetorical performance — including clarity, structure, persuasi
 Decide who presented their case more effectively overall, and explain your reasoning.
 
 Do not summarize the debate — make a judgment.
+
+Return your answer as valid JSON only, with exactly two keys: "winner" and "justification".
 """
 

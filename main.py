@@ -6,6 +6,9 @@ import os
 import logging
 from rich.console import Console
 from rich.logging import RichHandler
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def setup_logging():
     console = Console(width=100)

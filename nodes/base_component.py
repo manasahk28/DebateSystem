@@ -6,7 +6,7 @@ import logging
 import random
 import time
 from typing import Optional, List, Type, Any
-from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import PydanticOutputParser, StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables.base import RunnableSequence
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
@@ -70,6 +70,7 @@ class BaseComponent:
         self.state: Optional[DebateState] = None
         self.prompt_template: Optional[ChatPromptTemplate] = None
         self.chain: Optional[RunnableSequence] = None
+        self.output_model: Optional[Type[BaseModel]] = None
         self.documents: Optional[List] = None
         self.prompt_tokens = 0
         self.completion_tokens = 0
@@ -163,10 +164,19 @@ class BaseComponent:
                 else:
                     result = self.chain.invoke(inputs)
 
+                if self.output_model is not None and not isinstance(result, self.output_model):
+                    parser = PydanticOutputParser(pydantic_object=self.output_model)
+                    text_to_parse = getattr(result, "text", str(result))
+                    result = parser.parse(text_to_parse)
+
                 return result
 
             except Exception as e:
-                if "429" in str(e):
+                err_str = str(e).lower()
+                if "429" in err_str or "rate_limit" in err_str or "choices" in err_str or "too many" in err_str:
+                    if attempt == self.max_retries - 1:
+                        raise Exception("Rate limit hit — please wait a minute and try again.")
+
                     retry_after = None
                     if hasattr(e, "response") and getattr(e.response, "headers", None):
                         headers = {k.lower(): v for k, v in e.response.headers.items()}
@@ -181,14 +191,12 @@ class BaseComponent:
                         except ValueError:
                             pass
 
-                    jitter = random.uniform(0.1, 0.5)
-                    wait_time = retry_wait + jitter
+                    wait = min(retry_wait + random.uniform(0, 2), 30)
                     self.logger.warning(
-                        f"Rate limit reached. Retrying in {wait_time:.1f} seconds... "
-                        f"(Attempt {attempt + 1}/{self.max_retries})"
+                        f"Rate limit. Retrying in {wait:.1f}s (attempt {attempt+1}/{self.max_retries})"
                     )
-                    time.sleep(wait_time)
-                    retry_wait = min(retry_wait * 2, 60)
+                    time.sleep(wait)
+                    retry_wait *= 2
                 else:
                     self.logger.error(f"Unexpected error: {str(e)}")
                     raise e
@@ -218,13 +226,19 @@ class BaseComponent:
         Creates a chain that yields structured outputs (parsed into a Pydantic model).
         """
         self.validate_initialization()
+        self.output_model = output_model
         self.prompt_template = ChatPromptTemplate.from_messages(
             [
                 ("system", system_template),
                 ("human", human_template),
             ]
         )
-        self.chain = self.prompt_template | self.llm.with_structured_output(output_model)
+
+        if isinstance(self.llm, ChatGroq):
+            self.chain = self.prompt_template | self.llm | self.output_parser
+        else:
+            self.chain = self.prompt_template | self.llm.with_structured_output(output_model)
+
         return self.chain
 
     def build_return_with_tokens(self, node_specific_data: dict) -> dict:

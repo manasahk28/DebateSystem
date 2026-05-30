@@ -46,7 +46,7 @@ class GenerateTopicNode(BaseComponent):
             self.transcript_logger.log_turn(
                 state.get("debate_id"),
                 debate_topic,
-                state.get("round_number", 0) + 1,
+                state.get("round_number", 1),
                 "topic_generator",
                 "topic",
                 debate_topic,

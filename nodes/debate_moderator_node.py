@@ -12,6 +12,12 @@ class DebateModeratorNode:
         stage = state["stage"]
         speaker = state["speaker"]
 
+        # Safety guard: ensure speaker is a valid value before routing
+        if speaker not in [SPEAKER_PRO, SPEAKER_CON]:
+            raise ValueError(
+                f"Invalid speaker: {state.get('speaker')}"
+            )
+
         if stage == STAGE_OPENING and speaker == SPEAKER_PRO:
             return Command(
                 update={"stage": STAGE_REBUTTAL, "speaker": SPEAKER_CON},
@@ -19,7 +25,7 @@ class DebateModeratorNode:
             )
         elif stage == STAGE_REBUTTAL and speaker == SPEAKER_CON:
             return Command(
-                update={"stage": STAGE_COUNTER, "speaker": SPEAKER_PRO},
+                update={"stage": STAGE_COUNTER, "speaker": SPEAKER_PRO, "round_number": state.get("round_number", 0) + 1},
                 goto=NODE_PRO_DEBATER
             )
         elif stage == STAGE_COUNTER and speaker == SPEAKER_PRO:
@@ -29,7 +35,7 @@ class DebateModeratorNode:
             )
         elif stage == STAGE_FINAL_ARGUMENT and speaker == SPEAKER_CON:
             return Command(
-                update={},
+                update={"round_number": state.get("round_number", 0) + 1},
                 goto=NODE_JUDGE
             )
 

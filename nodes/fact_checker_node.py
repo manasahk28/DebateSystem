@@ -73,24 +73,37 @@ class FactCheckNode(BaseComponent):
             result = fact_check_result.get("binary_score", "no").lower()
             justification = fact_check_result.get("justification", "Unable to verify")
         except (json.JSONDecodeError, AttributeError):
-            # Fallback if JSON parsing fails
-            self.logger.warning(f"Failed to parse fact-check JSON, defaulting to 'yes': {response_text}")
-            result = "yes"
-            justification = "Fact-check parsing error; claim accepted by default"
+            # If the model output cannot be parsed, treat as a failed fact-check.
+            self.logger.warning(f"Failed to parse fact-check JSON: {response_text}")
+
+            result = "no"
+            justification = (
+                "Fact-check failed due to invalid model output."
+            )
 
         if result == "yes":
             self.logger.info(f"[green]✅ Verified[/]\n"f"[dim]{justification}[/]")
-            last_message["validated"] = True
+            # Create an updated copy of the last message instead of mutating in-place
+            updated_message = { **last_message, "validated": True }
+            messages = messages[:-1] + [updated_message]
+
             if self.transcript_logger:
+                # Update the debater's last turn to reflect the fact-check result
+                try:
+                    self.transcript_logger.update_fact_check_status(state.get("debate_id"), speaker, True)
+                except Exception:
+                    self.logger.exception("Failed to update fact-check status in DB for passed check")
+
                 self.transcript_logger.log_turn(
                     state.get("debate_id"),
                     state.get("debate_topic"),
-                    state.get("round_number", 0) + 1,
-                    speaker,
+                    state.get("round_number", 1),
+                    "fact_checker",
                     stage,
                     f"Fact check passed: {justification}",
                     True,
                 )
+
             return {
                 "messages": messages,
                 "validated": True,
@@ -107,11 +120,17 @@ class FactCheckNode(BaseComponent):
                 stage=state["stage"],
             )
             if self.transcript_logger:
+                # Update the debater's last turn to reflect the failed fact-check
+                try:
+                    self.transcript_logger.update_fact_check_status(state.get("debate_id"), speaker, False)
+                except Exception:
+                    self.logger.exception("Failed to update fact-check status in DB for failed check")
+
                 self.transcript_logger.log_turn(
                     state.get("debate_id"),
                     state.get("debate_topic"),
-                    state.get("round_number", 0) + 1,
-                    speaker,
+                    state.get("round_number", 1),
+                    "fact_checker",
                     stage,
                     f"Fact check failed: {justification}",
                     False,

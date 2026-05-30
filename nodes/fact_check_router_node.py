@@ -8,14 +8,24 @@ from configurations.debate_constants import (
     SPEAKER_CON,
     SPEAKER_PRO,
 )
+from typing import Any
 
 class FactCheckRouterNode:
+    def __init__(self, transcript_logger: Any = None):
+        self.transcript_logger = transcript_logger
+
     def __call__(self, state: DebateState) -> Command[str]:
         messages = state.get("messages", [])
-        speaker = state.get("speaker")
         if not messages:
             raise ValueError("No messages found in the state.")
         last_message = messages[-1]
+        # Use the actual speaker from the last message to route fact-check results.
+        # If the last message was appended by the fact checker (due to a failed check),
+        # look at the second-to-last message to determine which debater failed.
+        if last_message["speaker"] == "fact_checker" and len(messages) >= 2:
+            speaker = messages[-2]["speaker"]
+        else:
+            speaker = last_message["speaker"]
         pro_fact_checks = state.get("times_pro_fact_checked", 0)
         con_fact_checks = state.get("times_con_fact_checked", 0)
 
@@ -33,8 +43,23 @@ class FactCheckRouterNode:
                 "validated": True,
                 "stage": "verdict"
             }
+
+            if self.transcript_logger:
+                self.transcript_logger.log_turn(
+                    state.get("debate_id"),
+                    state.get("debate_topic"),
+                    state.get("round_number", 1),
+                    "moderator",
+                    "verdict",
+                    verdict_msg["content"],
+                    True,
+                )
+
             return Command(
-                update={"messages": messages + [verdict_msg]},
+                update={
+                    "messages": messages + [verdict_msg],
+                    "disqualified": disqualified
+                },
                 goto=END
             )
         if last_message.get("validated"):

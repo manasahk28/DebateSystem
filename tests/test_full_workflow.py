@@ -4,23 +4,7 @@ from workflow.debate_workflow import DebateWorkflow
 
 async def _run_full_debate_workflow():
     workflow = DebateWorkflow()
-    graph = workflow._initialize_workflow().compile()
-
-    initial_state = {
-        "debate_topic": "Should autonomous drones be allowed in warfare?",
-        "positions": {
-            "pro": "In favor of the topic",
-            "con": "Against the topic"
-        },
-        "messages": [],
-        "opening_statement_pro_agent": "",
-        "stage": "opening",
-        "speaker": "pro",
-        "times_pro_fact_checked": 0,
-        "times_con_fact_checked": 0,
-    }
-
-    return await graph.ainvoke(initial_state, config={"recursion_limit": 50})
+    return await workflow.run("test-debate-id", topic="Should autonomous drones be allowed in warfare?")
 
 
 def test_full_debate_workflow_completes():

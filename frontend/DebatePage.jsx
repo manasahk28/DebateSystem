@@ -1,96 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-
-// ── replace with your actual constants if integrating ─────────────────────────
-const API = "http://localhost:8000";
-
-// ── shared theme (mirrors Debate2.jsx / HomePage.jsx / HistoryPage.jsx) ───────
-function useTheme() {
-  const [dark, setDark] = useState(false);
-  const theme = {
-    dark,
-    bg:           dark ? "#0d0d1a"                           : "#ede8f5",
-    card:         dark ? "#13101f"                           : "#f5f2fc",
-    text:         dark ? "#e8e0f5"                           : "#1e1240",
-    subtext:      dark ? "#9987cc"                           : "#5b4a8a",
-    muted:        dark ? "#6b5fa0"                           : "#8b7cb5",
-    accent:       dark ? "#a78bfa"                           : "#7c5cbf",
-    border:       dark ? "#2a1f50"                           : "#d4c8ef",
-    rowBg:        dark ? "#13101f"                           : "#ffffff",
-    rowBorder:    dark ? "#2d2060"                           : "#ddd6f5",
-    btnBg:        dark ? "#1e1535"                           : "#eee9f9",
-    btnText:      dark ? "#a78bfa"                           : "#7c5cbf",
-    btnBorder:    dark ? "#2d2060"                           : "#d4c8ef",
-    proBg:        dark ? "rgba(52,211,153,0.08)"             : "rgba(52,211,153,0.10)",
-    proBorder:    dark ? "rgba(52,211,153,0.25)"             : "rgba(16,185,129,0.30)",
-    proText:      dark ? "#34d399"                           : "#059669",
-    conBg:        dark ? "rgba(248,113,113,0.08)"            : "rgba(248,113,113,0.10)",
-    conBorder:    dark ? "rgba(248,113,113,0.25)"            : "rgba(239,68,68,0.30)",
-    conText:      dark ? "#f87171"                           : "#dc2626",
-    factBg:       dark ? "rgba(167,139,250,0.08)"            : "rgba(124,92,191,0.07)",
-    factBorder:   dark ? "rgba(167,139,250,0.25)"            : "rgba(124,92,191,0.20)",
-    factText:     dark ? "#a78bfa"                           : "#7c5cbf",
-    judgeBg:      dark ? "rgba(251,191,36,0.08)"             : "rgba(251,191,36,0.10)",
-    judgeBorder:  dark ? "rgba(251,191,36,0.25)"             : "rgba(217,119,6,0.25)",
-    judgeText:    dark ? "#fbbf24"                           : "#d97706",
-    danger:       dark ? "#f87171"                           : "#dc2626",
-    dangerBg:     dark ? "rgba(248,113,113,0.08)"            : "rgba(254,226,226,1)",
-    dangerBorder: dark ? "rgba(248,113,113,0.25)"            : "rgba(252,165,165,1)",
-    success:      dark ? "#34d399"                           : "#059669",
-    statBg:       dark ? "#1a1330"                           : "#eee9f9",
-    cardShadow:   dark ? "0 8px 40px rgba(109,40,217,0.18)" : "0 8px 40px rgba(124,92,191,0.10)",
-  };
-  return { theme, toggleDark: () => setDark(d => !d) };
-}
-
-// ── navbar ─────────────────────────────────────────────────────────────────────
-function Navbar({ theme, toggleDark }) {
-  return (
-    <div style={{
-      display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: "18px 28px",
-      borderBottom: `1px solid ${theme.border}`,
-      background: theme.card,
-      transition: "background 0.35s, border-color 0.35s",
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{
-          fontFamily: "'Georgia', serif", fontSize: "22px",
-          fontWeight: "700", color: theme.text, letterSpacing: "-0.4px",
-        }}>
-          Debate2.0
-        </span>
-        {theme.dark && (
-          <span style={{ color: "#a78bfa", fontSize: 12, marginTop: "-8px" }}>✦</span>
-        )}
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style={{ color: theme.muted }}>
-          <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-        <div onClick={toggleDark} style={{
-          width: "46px", height: "26px",
-          background: theme.dark ? "#6d28d9" : "#c4b5fd",
-          borderRadius: "13px", position: "relative",
-          cursor: "pointer", transition: "background 0.3s",
-        }}>
-          <div style={{
-            position: "absolute", top: "3px",
-            left: theme.dark ? "23px" : "3px",
-            width: "20px", height: "20px",
-            background: "#fff", borderRadius: "50%",
-            transition: "left 0.3s", boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
-          }} />
-        </div>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ color: theme.muted }}>
-          <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"
-            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
-    </div>
-  );
-}
+import { API } from "./constants";
 
 // ── stat card ──────────────────────────────────────────────────────────────────
 function StatCard({ label, value, theme }) {
@@ -188,8 +97,7 @@ function WinnerBanner({ winner, disqualified, theme }) {
 }
 
 // ── main page ──────────────────────────────────────────────────────────────────
-export default function DebatePage({ topic, onDone, onBack }) {
-  const { theme, toggleDark }             = useTheme();
+export default function DebatePage({ topic, onDone, onBack, theme }) {
   const [messages, setMessages]           = useState([]);
   const [status, setStatus]               = useState("connecting");
   const [winner, setWinner]               = useState(null);
@@ -250,6 +158,9 @@ export default function DebatePage({ topic, onDone, onBack }) {
                 setStats({ rounds: evt.total_rounds, total: evt.total_messages });
                 setStatus("done");
                 onDone && onDone(evt);
+              } else if (evt.type === "complete") {
+                // Backend signals stream completion; ensure UI stops loading spinners
+                setStatus(prev => prev === "running" ? "done" : prev);
               } else if (evt.type === "error") {
                 setStatus("error");
               }
@@ -257,8 +168,8 @@ export default function DebatePage({ topic, onDone, onBack }) {
           }
         }
         if (!aborted) setStatus(prev => prev === "running" ? "done" : prev);
-      } catch (e) {
-        console.error("Stream error:", e);
+      }catch (e) {
+        console.error("Stream error details:", e.message, e.name, e.stack);
         if (!aborted) setStatus("error");
       }
     }
@@ -302,8 +213,6 @@ export default function DebatePage({ topic, onDone, onBack }) {
           0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
         }
       `}</style>
-
-      <Navbar theme={theme} toggleDark={toggleDark} />
 
       <div style={{ maxWidth: "700px", margin: "0 auto", padding: "40px 24px 64px" }}>
 

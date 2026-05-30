@@ -15,7 +15,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
-# Make sure the project root is on the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from transcript_logger import TranscriptLogger
@@ -29,6 +28,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
     ],
@@ -56,17 +56,50 @@ class DebateSummary(BaseModel):
     started_at: str
 
 
-# ── Helper ────────────────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def parse_winner_from_message(content: str) -> str:
-    if "WINNER: PRO" in content:
+    """
+    Robustly parse winner/disqualification from freeform judge text.
+
+    Looks for common patterns (case-insensitive):
+      - explicit winner lines: "winner: pro", "winner - CON", "PRO wins"
+      - disqualification lines: "disqualified: pro" (opponent wins)
+      - draw/tie words
+
+    Returns one of: "pro", "con", or "draw".
+    """
+    import re
+    if not content:
+        return "draw"
+    s = content.lower()
+
+    # Check explicit disqualification first (disqualified: PRO -> opponent wins)
+    m = re.search(r"disqualif(?:ied)?[:\-\s]*\s*(pro|con)\b", s)
+    if m:
+        dis = m.group(1)
+        return "con" if dis == "pro" else "pro"
+
+    # Check explicit winner lines like "winner: pro" or "result: con"
+    m = re.search(r"(?:winner|verdict|result)[:\-\s]*\s*(pro|con|draw|tie)\b", s)
+    if m:
+        val = m.group(1)
+        if val in ("draw", "tie"):
+            return "draw"
+        return val
+
+    # Common phrase patterns like "PRO wins", "CON wins"
+    m = re.search(r"\b(pro|con)\b\s+win(?:s)?\b", s)
+    if m:
+        return m.group(1)
+
+    # Fallback: look for uppercase tokens like "PRO" or "CON" near the end
+    if " pro " in s or s.strip().endswith(" pro") or s.strip().startswith("pro "):
         return "pro"
-    elif "WINNER: CON" in content:
+    if " con " in s or s.strip().endswith(" con") or s.strip().startswith("con "):
         return "con"
-    elif "DISQUALIFIED: PRO" in content:
-        return "con"
-    elif "DISQUALIFIED: CON" in content:
-        return "pro"
+
+    # If nothing matched, treat as draw
     return "draw"
 
 
@@ -94,76 +127,147 @@ async def health():
 @app.post("/debate/start")
 async def start_debate(body: StartDebateRequest):
     """
-    Kicks off a debate and streams each turn as a Server-Sent Event (SSE).
-    The frontend listens with EventSource or fetch + ReadableStream.
+    Kicks off a debate and streams progress as Server-Sent Events (SSE).
 
-    Each SSE event has the shape:
-      data: {"type": "turn"|"done"|"error", ...}
+    Event types:
+      started  — debate kicked off, includes debate_id
+      ping     — keepalive sent every 15s while debate runs (ignore on frontend)
+      turn     — one agent message, streamed after debate completes
+      done     — debate finished, includes winner/stats
+      error    — something went wrong
     """
     debate_id = str(uuid.uuid4())
+    # Validate incoming topic strictly to prevent empty debates
+    if not body.topic or not body.topic.strip():
+        raise HTTPException(status_code=400, detail="Topic required")
     topic = body.topic.strip()
 
-    if not topic:
-        raise HTTPException(status_code=400, detail="Topic cannot be empty.")
+    # Create a request-specific queue and logger to capture events in real time
+    queue = asyncio.Queue()
+    req_logger = TranscriptLogger(
+        db_path=transcript_logger.db_path,
+        csv_path=transcript_logger.csv_path,
+        event_queue=queue
+    )
 
     async def event_stream():
+        # Keep a reference to the background task so we can cancel it on disconnect
+        task = None
         try:
-            # Announce debate started
+            # ── 1. Announce start ─────────────────────────────────────────
             yield f"data: {json.dumps({'type': 'started', 'debate_id': debate_id, 'topic': topic})}\n\n"
 
-            workflow = DebateWorkflow(transcript_logger=transcript_logger)
+            workflow = DebateWorkflow(transcript_logger=req_logger)
 
-            # DebateWorkflow.run() returns the final state dict.
-            # We wrap it so the frontend gets incremental updates via the
-            # transcript_logger callback mechanism.
-            # If your workflow supports async iteration, swap this out.
-            result = await workflow.run(debate_id, topic=topic)
+            # ── 2. Run debate in background ──
+            task = asyncio.create_task(workflow.run(debate_id, topic=topic))
+
+            # Consume events from the queue in real time
+            while not task.done() or not queue.empty():
+                try:
+                    # Retrieve the next event from the queue. Timeout every 15s to send keepalive
+                    event_payload = await asyncio.wait_for(queue.get(), timeout=15.0)
+                    
+                    event_type = event_payload.get("event")
+                    if event_type == "turn":
+                        # Formulate the event exactly as the frontend expects
+                        event = {
+                            "type": "turn",
+                            "debate_id": debate_id,
+                            "speaker": event_payload.get("speaker"),
+                            "stage": event_payload.get("stage"),
+                            "content": event_payload.get("argument"),
+                            "round_number": event_payload.get("round"),
+                            "round": event_payload.get("round"),
+                            "turn_number": event_payload.get("round"),
+                            "validated": event_payload.get("fact_check_passed"),
+                            "timestamp": event_payload.get("timestamp"),
+                        }
+                        yield f"data: {json.dumps(event)}\n\n"
+                    elif event_type == "fact_check_update":
+                        event = {
+                            "type": "fact_check_update",
+                            "debate_id": debate_id,
+                            "speaker": event_payload.get("speaker"),
+                            "validated": event_payload.get("fact_check_passed"),
+                            "timestamp": event_payload.get("timestamp"),
+                        }
+                        yield f"data: {json.dumps(event)}\n\n"
+                    
+                    queue.task_done()
+                except asyncio.TimeoutError:
+                    # Stream still active but waiting for node execution — send keepalive
+                    yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+
+            # ── 3. Get final result safely (capture task exceptions)
+            try:
+                result = task.result()
+            except asyncio.CancelledError:
+                # Task was cancelled
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Debate task cancelled.'})}\n\n"
+                yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+                return
+            except Exception as task_err:
+                import traceback
+                print(f"Debate task failed: {traceback.format_exc()}")
+                yield f"data: {json.dumps({'type': 'error', 'message': str(task_err)})}\n\n"
+                yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+                return
 
             messages = result.get("messages", [])
-            round_summaries = result.get("round_summaries", [])
 
-            # Stream each message as a turn event
-            for msg in messages:
-                event = {
-                    "type": "turn",
-                    "debate_id": debate_id,
-                    "speaker": msg.get("speaker"),
-                    "stage": msg.get("stage"),
-                    "content": msg.get("content"),
-                    "validated": msg.get("validated", False),
-                    "round_number": msg.get("round_number", 1),
-                    "timestamp": msg.get("timestamp", datetime.now(timezone.utc).isoformat()),
-                }
-                yield f"data: {json.dumps(event)}\n\n"
-                await asyncio.sleep(0)  # Yield control so FastAPI can flush
-
-            # Determine winner
+            # ── 4. Determine winner ───────────────────────────────────────
             final_msg_content = messages[-1]["content"] if messages else ""
             winner = parse_winner_from_message(final_msg_content)
             disqualified = result.get("disqualified")
 
-            # Export CSV
-            transcript_logger.export_csv(debate_id)
+            # ── 5. Export CSV ─────────────────────────────────────────────
+            try:
+                req_logger.export_csv(debate_id)
+            except Exception as csv_err:
+                print(f"CSV export failed (non-critical): {csv_err}")
 
-            # Done event
-            yield f"data: {json.dumps({'type': 'done', 'debate_id': debate_id, 'winner': winner, 'disqualified': disqualified, 'total_rounds': result.get('round_number', 1), 'total_messages': len(messages)})}\n\n"
+            # ── 6. Send done event ────────────────────────────────────────
+            yield f"data: {json.dumps({
+                'type': 'done',
+                'debate_id': debate_id,
+                'winner': winner,
+                'disqualified': disqualified,
+                'total_rounds': result.get('round_number', 1),
+                'total_messages': len(messages),
+            })}\n\n"
 
+            # ── 7. Signal completion (helps frontend stop loading spinners) ──
+            yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+
+        except asyncio.CancelledError:
+            # Client disconnected (SSE connection loss) — actively cancel background graph execution
+            if task and not task.done():
+                task.cancel()
+                try:
+                    await task
+                except Exception:
+                    pass
         except Exception as e:
+            import traceback
+            print(f"Debate stream error: {traceback.format_exc()}")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            yield f"data: {json.dumps({'type': 'complete'})}\n\n"
 
     return StreamingResponse(
         event_stream(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",  # Disable Nginx buffering
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
         },
     )
 
 
 @app.get("/debate/{debate_id}/transcript")
 async def get_transcript(debate_id: str):
-    """Returns the full transcript for a debate as a list of messages."""
+    """Returns the full transcript for a debate."""
     import sqlite3
     conn = sqlite3.connect(transcript_logger.db_path)
     conn.row_factory = sqlite3.Row
@@ -176,7 +280,22 @@ async def get_transcript(debate_id: str):
     if not rows:
         raise HTTPException(status_code=404, detail="Debate not found.")
 
-    messages = [dict(row) for row in rows]
+    messages = []
+    for row in rows:
+        messages.append({
+            "id": row["id"],
+            "debate_id": row["debate_id"],
+            "topic": row["topic"],
+            "round_number": row["round"],
+            "round": row["round"],
+            "turn_number": row["round"],
+            "speaker": row["speaker"],
+            "stage": row["stage"],
+            "content": row["argument"],
+            "validated": bool(row["fact_check_passed"]) if row["fact_check_passed"] is not None else None,
+            "timestamp": row["timestamp"],
+        })
+
     return {
         "debate_id": debate_id,
         "topic": messages[0]["topic"] if messages else "",
@@ -187,19 +306,18 @@ async def get_transcript(debate_id: str):
 
 @app.get("/debates")
 async def list_debates():
-    """Returns a summary list of all past debates."""
+    """Returns a summary list of all past debates, newest first."""
     import sqlite3
     conn = sqlite3.connect(transcript_logger.db_path)
     conn.row_factory = sqlite3.Row
 
-    # One row per debate — pick the last message for winner info
     rows = conn.execute("""
         SELECT
             debate_id,
             topic,
             MIN(timestamp) as started_at,
-            COUNT(*) as total_messages,
-            MAX(round) as total_rounds,
+            COUNT(*)       as total_messages,
+            MAX(round)     as total_rounds,
             MAX(CASE WHEN speaker = 'judge' THEN argument ELSE '' END) as verdict
         FROM debates
         GROUP BY debate_id
@@ -210,7 +328,7 @@ async def list_debates():
     debates = []
     for row in rows:
         d = dict(row)
-        verdict = d.pop("verdict", "")
+        verdict = d.pop("verdict", "") or ""
         d["winner"] = parse_winner_from_message(verdict) if verdict else None
         d["disqualified"] = None
         if "DISQUALIFIED: PRO" in verdict:
