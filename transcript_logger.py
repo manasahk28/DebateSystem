@@ -3,9 +3,9 @@ from datetime import datetime
 from typing import Optional, Any
 
 class TranscriptLogger:
-    def __init__(self, db_path="debates.db", csv_path="transcripts/", event_queue: Optional[Any] = None, user_id: Optional[str] = None):
-        self.db_path = db_path
-        self.csv_path = csv_path
+    def __init__(self, db_path=None, csv_path=None, event_queue: Optional[Any] = None, user_id: Optional[str] = None):
+        self.db_path = db_path or os.getenv("DATABASE_PATH", "debates.db")
+        self.csv_path = csv_path or os.getenv("CSV_PATH", "transcripts/")
         self.event_queue = event_queue
         self.user_id = user_id
         os.makedirs(self.csv_path, exist_ok=True)
