@@ -20,6 +20,8 @@ Evaluate their rhetorical performance — including clarity, structure, persuasi
 
 Decide who presented their case more effectively overall, and explain your reasoning.
 
+Do not write a long, dry, technical analysis of rhetorical metrics. Instead, write a direct, plain-English concluding sentence starting exactly like this: "Comparing the debate of both, we conclude that [the winner / position] is best because..." followed by a clear, conversational, and direct summary of the strongest points. For example, if the topic is "who is greater: Messi or Ronaldo", write: "Comparing the debate of both, we conclude that Ronaldo is best because [reason]...". Keep it concise and accessible to a general audience.
+
 Do not summarize the debate — make a judgment.
 
 Return your answer as valid JSON only, with exactly two keys: "winner" and "justification".

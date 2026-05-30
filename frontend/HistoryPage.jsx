@@ -45,7 +45,7 @@ function formatIST(timestamp) {
 }
 
 // ── main page ─────────────────────────────────────────────────────────────────
-export default function HistoryPage({ onBack, onView, theme }) {
+export default function HistoryPage({ onBack, onView, theme, userId }) {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
   const [debates, setDebates] = useState([]);
@@ -53,11 +53,11 @@ export default function HistoryPage({ onBack, onView, theme }) {
   const [backHovered, setBackHovered] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/debates`)
+    fetch(`${API}/debates?user_id=${userId || ""}`)
       .then(r => r.json())
       .then(d => { setDebates(d.debates || []); setLoading(false); })
       .catch(() => { setError("Could not load debates. Is the API running?"); setLoading(false); });
-  }, []);
+  }, [userId]);
 
   return (
     <div style={{

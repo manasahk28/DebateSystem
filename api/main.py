@@ -12,7 +12,7 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response, StreamingResponse, FileResponse
 from pydantic import BaseModel
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -44,6 +44,7 @@ transcript_logger = TranscriptLogger()
 
 class StartDebateRequest(BaseModel):
     topic: str
+    user_id: Optional[str] = None
 
 
 class DebateSummary(BaseModel):
@@ -141,13 +142,15 @@ async def start_debate(body: StartDebateRequest):
     if not body.topic or not body.topic.strip():
         raise HTTPException(status_code=400, detail="Topic required")
     topic = body.topic.strip()
+    user_id = body.user_id
 
     # Create a request-specific queue and logger to capture events in real time
     queue = asyncio.Queue()
     req_logger = TranscriptLogger(
         db_path=transcript_logger.db_path,
         csv_path=transcript_logger.csv_path,
-        event_queue=queue
+        event_queue=queue,
+        user_id=user_id
     )
 
     async def event_stream():
@@ -305,8 +308,11 @@ async def get_transcript(debate_id: str):
 
 
 @app.get("/debates")
-async def list_debates():
-    """Returns a summary list of all past debates, newest first."""
+async def list_debates(user_id: Optional[str] = None):
+    """Returns a summary list of all past debates for a user, newest first."""
+    if not user_id:
+        return {"debates": [], "total": 0}
+
     import sqlite3
     conn = sqlite3.connect(transcript_logger.db_path)
     conn.row_factory = sqlite3.Row
@@ -320,9 +326,10 @@ async def list_debates():
             MAX(round)     as total_rounds,
             MAX(CASE WHEN speaker = 'judge' THEN argument ELSE '' END) as verdict
         FROM debates
+        WHERE user_id = ?
         GROUP BY debate_id
         ORDER BY started_at DESC
-    """).fetchall()
+    """, (user_id,)).fetchall()
     conn.close()
 
     debates = []
@@ -342,7 +349,7 @@ async def list_debates():
 
 @app.get("/debate/{debate_id}/export")
 async def export_csv(debate_id: str):
-    """Triggers a CSV export and returns the file path."""
+    """Triggers a CSV export and returns the actual CSV file for download."""
     import sqlite3
     conn = sqlite3.connect(transcript_logger.db_path)
     exists = conn.execute(
@@ -354,4 +361,10 @@ async def export_csv(debate_id: str):
         raise HTTPException(status_code=404, detail="Debate not found.")
 
     transcript_logger.export_csv(debate_id)
-    return {"status": "exported", "path": f"transcripts/{debate_id}.csv"}
+    file_path = os.path.join(transcript_logger.csv_path, f"{debate_id}.csv")
+    
+    return FileResponse(
+        path=file_path,
+        filename=f"debate_{debate_id}.csv",
+        media_type="text/csv"
+    )

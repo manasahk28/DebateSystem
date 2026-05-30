@@ -205,7 +205,7 @@ function WinnerBanner({ winner, disqualified, theme }) {
 }
 
 // ── main page ──────────────────────────────────────────────────────────────────
-export default function DebatePage({ topic, onDone, onBack, theme }) {
+export default function DebatePage({ topic, onDone, onBack, theme, userId }) {
   const [messages, setMessages]           = useState([]);
   const [status, setStatus]               = useState("connecting");
   const [winner, setWinner]               = useState(null);
@@ -229,7 +229,7 @@ export default function DebatePage({ topic, onDone, onBack, theme }) {
         const res = await fetch(`${API}/debate/start`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ topic }),
+          body: JSON.stringify({ topic, user_id: userId }),
           signal,
         });
         if (!res.ok) { setStatus("error"); return; }
@@ -294,7 +294,7 @@ export default function DebatePage({ topic, onDone, onBack, theme }) {
       aborted = true;
       controller.abort();
     };
-  }, [topic]);
+  }, [topic, userId]);
 
   // ── auto-scroll ──
   useEffect(() => {
@@ -448,6 +448,44 @@ export default function DebatePage({ topic, onDone, onBack, theme }) {
         {/* ── Winner banner ── */}
         {status === "done" && winner && (
           <WinnerBanner winner={winner} disqualified={disqualified} theme={theme} />
+        )}
+
+        {/* ── Decision Rationale Card ── */}
+        {status === "done" && (
+          (() => {
+            const finalVerdictMsg = sortedMessages.find(m => m?.speaker === "judge" || m?.speaker === "moderator");
+            if (!finalVerdictMsg) return null;
+            const content = finalVerdictMsg.content || "";
+            let rationale = content;
+            if (finalVerdictMsg.speaker === "judge") {
+              const reasonMatch = content.match(/REASON:\s*([\s\S]+)/i);
+              rationale = reasonMatch ? reasonMatch[1].trim() : content;
+            }
+            return (
+              <div style={{
+                marginTop: 16,
+                padding: "20px 24px",
+                borderRadius: "14px",
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
+                boxShadow: theme.cardShadow,
+                transition: "all 0.35s",
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: theme.muted, marginBottom: 8 }}>
+                  ⚖️ Judge's Conclusion & Rationale
+                </div>
+                <div style={{
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  color: theme.text,
+                  whiteSpace: "pre-wrap",
+                  fontFamily: "system-ui, -apple-system, sans-serif",
+                }}>
+                  {rationale}
+                </div>
+              </div>
+            );
+          })()
         )}
 
         {/* ── Error banner ── */}

@@ -157,7 +157,7 @@ export default function HomePage({ onStart, theme }) {
               fontSize:     "15px",
               fontWeight:   "600",
               background:   canStart && !submitting
-                              ? (btnHovered ? theme.btnHover : theme.btnBg)
+                              ? (btnHovered ? (theme.dark ? "#6d28d9" : "#6a4fa3") : "#7c5cbf")
                               : theme.btnDisBg,
               color:        canStart && !submitting ? "#fff" : theme.btnDisText,
               border:       "none",
