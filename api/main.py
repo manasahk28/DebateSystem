@@ -272,14 +272,10 @@ async def start_debate(body: StartDebateRequest):
 @app.get("/debate/{debate_id}/transcript")
 async def get_transcript(debate_id: str):
     """Returns the full transcript for a debate."""
-    import sqlite3
-    conn = sqlite3.connect(transcript_logger.db_path)
-    conn.row_factory = sqlite3.Row
-    rows = conn.execute(
+    rows = transcript_logger.query_db(
         "SELECT * FROM debates WHERE debate_id = ? ORDER BY round, timestamp",
         (debate_id,)
-    ).fetchall()
-    conn.close()
+    )
 
     if not rows:
         raise HTTPException(status_code=404, detail="Debate not found.")
@@ -314,11 +310,7 @@ async def list_debates(user_id: Optional[str] = None):
     if not user_id:
         return {"debates": [], "total": 0}
 
-    import sqlite3
-    conn = sqlite3.connect(transcript_logger.db_path)
-    conn.row_factory = sqlite3.Row
-
-    rows = conn.execute("""
+    rows = transcript_logger.query_db("""
         SELECT
             debate_id,
             topic,
@@ -328,10 +320,9 @@ async def list_debates(user_id: Optional[str] = None):
             MAX(CASE WHEN speaker = 'judge' THEN argument ELSE '' END) as verdict
         FROM debates
         WHERE user_id = ?
-        GROUP BY debate_id
+        GROUP BY debate_id, topic
         ORDER BY started_at DESC
-    """, (user_id,)).fetchall()
-    conn.close()
+    """, (user_id,))
 
     debates = []
     for row in rows:
@@ -351,12 +342,9 @@ async def list_debates(user_id: Optional[str] = None):
 @app.get("/debate/{debate_id}/export")
 async def export_csv(debate_id: str):
     """Triggers a CSV export and returns the actual CSV file for download."""
-    import sqlite3
-    conn = sqlite3.connect(transcript_logger.db_path)
-    exists = conn.execute(
+    exists = transcript_logger.query_db(
         "SELECT 1 FROM debates WHERE debate_id = ? LIMIT 1", (debate_id,)
-    ).fetchone()
-    conn.close()
+    )
 
     if not exists:
         raise HTTPException(status_code=404, detail="Debate not found.")
